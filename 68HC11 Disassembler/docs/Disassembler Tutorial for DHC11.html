@@ -1,0 +1,263 @@
+
+<!-- saved from url=(0046)https://www.techedge.com.au/utils/dhc11tut.htm -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+  <title>Disassembler Tutorial for DHC11</title>
+  
+  <meta http-equiv="Description" content="This is a tutorial for DHC11, which is a multi-pass code-seeking disassembler for the Motorola 68HC11 and compatable processors. It runs under DOS and allows up to 8192 user defined labels.">
+  <meta name="Copyright" content="Tech Edge Pty. Ltd. 2000">
+  <meta name="Author" content="Peter Gargano">
+  <meta name="KeyWords" content="Assembler, Disassembler, 68HC11, GM, P4, GMP4, C3, GMC3, General Motors, Motorola, 6811, HC11, Tech Edge">
+</head>
+
+<body bgcolor="white">
+
+<font face="verdana,arial" color="darkblue">
+<h1>DHC11 Tutorial</h1>
+
+<ol>
+This is a tutorial for the
+<a href="http://www.techedge.com.au/utils/dhc11.htm">DHC11 Motorola 68HC11 Disassembler</a>.
+Reference is also made to the author's
+<a href="http://www.techedge.com.au/utils/ashc11.htm">ASHC11, a 68HC11 Macro Assembler</a>.
+The tutorial is heavily oriented to disassembling a GM ECU binary (an EPROM
+found in a GM vehicle's ECU, or engine management computer)
+
+</ol>
+</font>
+
+Text that you write is <font color="red" face="Lucida Sans">shown in red</font> and console
+output that the disassembler produces is
+<font color="darkblue" face="Lucida Sans"><i>shown in dark blue italics</i></font>.
+File output that the disassembler produces is
+<font color="darkblue" face="Lucida Sans">shown in normal dark blue</font>.
+<p>
+Initially, the bin for disassembly (called BJKS8010.BIN in the examples) is identified and a control file <b>BJKS</b>
+is created with the following minimal information describing the input file
+and the name of the output file.
+
+<font color="red">
+</font></p><pre><font color="red">; This control file is called BJKS
+;
+input   bjks8010.bin   ;this is the binary input file
+output  bjks.DIS       ;this is the disassembly source/listing file
+</font></pre><font color="red">
+</font>
+
+
+At a Dos prompt the command c:\&gt;<font color="red" face="Lucida Sans">dhc11 bjks -a</font>
+is given. The <b>-a</b> switch forces addresses in the output. The resulting console
+output is shown below:
+
+<font color="darkblue"><i>
+<pre>DHC11 - 68HC11 Disassembler v1.00 (c) Copyright 2000 Tech Edge Pty. Ltd.
+
+Input file: bjks8010.bin
+Input file bjks8010.bin has 32768 bytes ($8000).
+Output file: bjks.DIS
+Code resides from $8000 to $FFFF ($8000 bytes).
+No entry point - defaulting to disassembly from $9006 (reset vector at $FFFE).
+Entry point $1000 outside ROM image (ref. from PC = $916E).
+Indexed Call/Jump at $D3A2, may require a vector table.
+Pass 1 found 316 new entry points.
+Pass 2 found 93 new entry points.
+Pass 3 found 0 new entry points.
+Total of 3 iteration(s) to find all code.
+</pre></i>
+</font>
+
+This shows that the file was read into memory and automatically located from
+$8000 through to $FFFF. As no initial entry point was supplied, the reset vector
+at $FFFE was used and this contained the address $9006. The first two passes
+found 316 + 93 entry points, and the third found no more, so DHC11 stopped
+seeking more code and ran the code/data output pass.
+<p>
+Looking at the output file <b>bjks.dis</b> we find there is a lot of data that
+should probably be code. We remember that the 68HC11 has a few vectors at the
+top of memory. Inspecting the file we see:
+
+<font color="darkblue">
+</font></p><pre><font color="darkblue">FFC9            fill    $00, 39
+FFF0            db      $60, $00, $93, $69, $B3, $34, $60, $00, $90, $02
+FFFA            db      $90, $00, $90, $04
+FFFE    LFFFE:  dw      L9006
+	        end
+</font></pre><font color="darkblue">
+</font>
+
+This indicates that there are probably 8 vectors. The easiest way to tell the
+disassembler this is via the control file line:
+
+<font color="red"><pre>vectors $fff0 8 hc11vec hc11vector
+</pre></font>
+
+Doing this, and running DHC11 again, but this time with the <b>-ov</b> switch
+to overwrite the old output file <b>bjks.dis</b>, we get the following
+
+<font color="darkblue"><i>
+<pre>** Symbol "hc11vec_00" is already Install at $6000 ("hc11vec_03" requested)
+Entry point $1000 outside ROM image (ref. from PC = $916E).
+Indexed Call/Jump at $94BB, may require a vector table.
+Entry point $1009 outside ROM image (ref. from PC = $94CC).
+Indexed Call/Jump at $D20A, may require a vector table.
+Indexed Call/Jump at $D3A2, may require a vector table.
+Pass 1 found 1466 new entry points.
+Pass 2 found 132 new entry points.
+Pass 3 found 3 new entry points.
+Pass 4 found 0 new entry points.
+Total of 4 iteration(s) to find all code.
+</pre>
+</i></font>
+We now find more code (1466 + 132 + 3 entry points) and it takes an extra pass.
+We also find we now have two messages indicating indexed call instructions
+were encountered. Looking at the code for the two address (<b>$D20A</b> and <b>$D3A2</b>)
+we find the code:
+
+<font color="darkblue"><pre>D1EA    LD1EA   ldaB    L01BE
+D1ED            cmpB    #$0A
+D1EF            bhi     LD235
+D1F1            bset    L005E, #%00100000
+D1F4            bset    L005D, #%00000100
+D1F7            staB    L01B9
+D1FA            lslB
+D204            ldX     #$D249
+D207            aBX
+D208            ldX     0, X
+D20A            call    0, X
+....            ...
+;
+D39E    LD39E   ldY     L01B2
+D3A2            call    0, Y
+</pre>
+The first indexed call is easy, as the address of a table (at <b>$D249</b> is
+supplied, and it looks like there are only 11 entries (register B is compared against <b>$0A</b>
+and branches if higher, so 0..10 =&gt; 11)
+Also, knowing a bit about the application, we may know that some code is
+called at fixed time intervals from a timer interrupt, and calls successive procedures listed
+in a table. So we can add the command:
+
+<font color="red"><pre>vectors $D249 11 loop timevectors
+</pre></font>
+
+Forgetting about the second indexed call for the moment, we run DHC11 again and
+find another indexed call
+
+<font color="darkblue"><i><pre>Indexed Call/Jump at $94BB, may require a vector table.
+</pre></i>
+
+<font color="red"><pre>vectors $D249 11 loop timevectors
+</pre></font>
+
+And again we look at the code and discover a vector table at <b>$94DB</b>, and it
+seems to have 16 entries as the code shows register B is masked to a 4 bits (= 16 entries):
+
+<font color="darkblue"><pre></pre>
+94B2            andB    #%00001111                 &lt;-- mask to 4 bits here
+94B4            ldX     #$94DB                     &lt;-- base table address here
+94B7            lslB
+94B8            aBX
+94B9            ldX     0, X
+94BB            call    0, X                       &lt;-- call one of 16 address
+
+
+So, not being sure what these vertors are for, we add the following command and
+run DHC11 again:
+
+<font color="red"><pre>vectors $94db 16 some somevectors
+</pre></font>
+
+<font color="darkblue"><i><pre>Pass 1 found 2138 new entry points.
+Pass 2 found 130 new entry points.
+Pass 3 found 3 new entry points.
+</pre></i>
+
+We don't get any more indexed jumps, but we now have (2138 + 130 + 3 = 2271) entry
+points being automatically found. So, we look through the code generated by DHC11
+and we find a large slab of <b>db</b>s at <b>$cbc3</b>, so wee look through the
+code for references to this address and we find this adress is used as a parameter
+in a call:
+
+<font color="darkblue"><pre>C2DF    LC2DF   ldX     #$CBC3                     &lt;-- load here
+C2E2            brset   L0059, #%00000100, LC2EF
+C2E6            brset   L0074, #%00100000, LC2EF
+C2EA            ldX     #$CBD4
+C2ED            jr      LC2F5
+;
+C2EF    LC2EF   addA    #$0A
+C2F1            bcc     LC2F5
+C2F3            ldaA    #$FF
+C2F5    LC2F5   call    LC9B5                      &lt;-- call here
+</pre>
+
+Looking through the code for the call's target address of <b>$c9b5</b> we find
+many calls to this address using the IX register as a parameter. Looking at the code
+at <b>$c9b5</b> we find some kind of a table looup routine. Now, here's where
+we could slog it out and try to work out what's happening, but a few people have
+already done some of the hard work, including
+<a href="http://ecmguy.tripod.com/">ECMguy at http://ecmguy.tripod.com/</a>,
+whos disassembly of the BUA binary can be found (in text format) at:
+<p>
+<a href="ftp://ftp.diy-efi.org/incoming/Bua_hac_text.zip">ftp://ftp.diy-efi.org/incoming/Bua_hac_text.zip</a>
+</p><p>
+A quick (!) look at the BUA disassembly will show that a possible name for the function
+at <b>$C9B5</b> could be <b>P4LKUPQ</b>. We'll choose the label <b>Lookup2d16</b> (remembering
+that most assemblers would not like a label starting with a number) because it better reflects
+its function, and we are not limited to a certain number of characters for our labels.
+We'll also add a few more labels we can assign just by looking at the BUA disassembly
+and comparing code around the <b>Lookup2d16</b> area.
+
+<font color="red"></font></p><pre><font color="red">entry $c9aa Lookup2d_nooff  ;2D Lookup with offset
+entry $c9b1 Lookup2d        ;2D Lookup
+entry $c9b5 Lookup2d16      ;2D Lookup with tables spaced at 16
+entry $c9c9 Interpol        ;interpolate between two 8 bit values
+entry $c9d2 Lookup3d        ;3d Lookup (2 variables)
+entry $ca74 mul16x16        ;multiply 16 x 16
+</font></pre>
+
+We could spend a bit of time comparing routines and assigning labels for those
+routines that are common. For the case where we know a bit about the software
+or hardware, but don't have a disassembly to help, we must do some more investigation.
+The <a href="http://www.techedge.com.au/vehicle/aldl/8192/8192hw.htm">ALDL data stream</a>
+can help us. The ALDL output of most ECMs is reasonably well documented, so we need
+to look for the ALDL code to help us identify the location, in memory, where the data
+is stored. This may give us the memory locations for many variables and tables.
+<p>
+The P4 series of GM ECUs assigns location
+</p><pre>$4007   Transmit status register
+$4008   Receive status register
+$4009   Receive data register
+$400A   Transmit data register
+</pre>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<center>
+<font color="gray"><i>Last Updated 15 May 2000</i></font>
+<p>
+Statistics by &nbsp; <a href="http://www.digits.com/"><img src="http://counter.digits.com/wc/-d/4/DHC11TUT" align="middle" width="60" height="20" border="0" hspace="4" vspace="2"> </a><a href="http://www.digits.com/">www.digits.com</a>
+<br>
+Shows approximate hits since 15 May 2000.
+</p><hr>
+<font color="RED">This document is copyright © 2000, Tech Edge  Pty. Ltd.<br>Author <b>P. Gargano</b><font>
+<p>
+		<a href="http://www.techedge.com.au/">Home</a> |
+		<a href="mailto:peter@mail.techedge.com.au?subject=DHC11%20Tutorial%20Feedback">e-mail DHC11 Feedback</a> |
+		<a href="http://www.techedge.com.au/copyrite.htm">Copyright</a>
+
+</p><center>
+
+
+</center></font></font></center></font></font></font></font></font></body></html>

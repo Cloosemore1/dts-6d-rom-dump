@@ -1,0 +1,441 @@
+
+<!-- saved from url=(0043)https://www.techedge.com.au/utils/dhc11.htm -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+  <title>DHC11 - Disassembler for Motorola 68HC11</title>
+  
+  <meta http-equiv="Description" content="DHC11 is a multi-pass code-seeking disassembler for the Motorola 68HC11 and compatable processors. It runs under DOS and allows up to 8192 user defined labels.">
+  <meta name="Copyright" content="Tech Edge Pty. Ltd. 2001">
+  <meta name="Author" content="Peter Gargano">
+  <meta name="KeyWords" content="Disassembler, 68HC11, GM, P4, GMP4, C3, GMC3, General Motors, Motorola, 6811, HC11, Tech Edge">
+</head>
+
+<body bgcolor="white">
+
+<font face="verdana,arial">
+<h1>DHC11 - A 68HC11 Disassembler</h1>
+
+<font face="verdana,arial" color="darkblue">
+
+<img align="left" hspace="10" vspace="15" alt="logo" width="50" height="93" src="./DHC11 - Disassembler for Motorola 68HC11_files/logosml.gif">
+
+<ol>
+This page described a multi-pass code-seeking disassembler for the Motorola 68HC11 and
+other compatible processors includig the 6800, 6801, 6802, 6803, etc.
+It includes a number of features to enhance the readability of traditional disassemblies.
+It has been used by the author for various applications including disassembling
+GM (including Holden) vehicle ECMs.
+
+<p>
+<!-- <a href=http://www.techedge.com.au/cgi-bin/tecatt.pl?dhc11.zip> -->
+<a href="http://www.techedge.com.au/download/default.htm">
+Get latest version of DHC11</a>
+
+</p></ol>
+</font>
+
+<font color="gray">
+The disassembler is described in enough detail to enable anyone
+familiar with disassembler and/or assembler concepts to begin using it
+immediately.
+There is a <a href="http://www.techedge.com.au/utils/dhc11tut.htm">
+disassembler tutorial</a> for DCH11.
+The disassembler's output is designed to be assembled by the author's companion
+<a href="http://www.techedge.com.au/utils/ashc11.htm">macro assembler - ASHC11</a>.
+but the output is flexible enough to be used by most good 68HC11 assemblers.
+The mnemonics chosen are not Motorola standard, but have been designed for
+readability by a majority of programmers familiar
+with either the 68xx, Z80, or other manufacturer's microcontrollers.
+The disassembler's output can be immediately assembled back to the original
+binary image for verification of the disassembly process.
+</font>
+</font>
+
+<font face="verdana,arial"><h2>Features of the Disassembler.</h2></font>
+
+<font face="verdana,arial"><b>Code Seeker:</b></font>
+
+A code-seeking disassembler will "look for" instructions
+that modify the target CPU's PC. Target addresses for CALL and BRANCH
+instructions are tagged as such. On each disassembly pass, new target
+addresses may be found as more code is "discovered" from the CPU's address
+space. The CPU's address space (ie. the loaded ROM/code image) is initially
+assumed to be data, and when a disassembly pass produces no more new target
+addresses for code, the code seeker has finished.
+<p>
+<font face="verdana,arial"><b>Flexible Output:</b></font>
+
+A number of options allow the output to be tailored
+for firstly finding out the structure of an unknown binary file, and later,
+for producing an output that can be most easily commented and made ready for
+re-assembly.
+
+</p><p>
+<font face="verdana,arial"><b>Few Limitations:</b></font>
+
+There are very few limitations on the disassembler.
+It will disassemble up 64 kbyte (65536 byte) binary files with the only
+real limitation being on the size of the user's symbol table, such that up to
+8,192 labels of up to 128 characters each may be defined.
+Commands that declare labels are <b>Label</b>, <b>Entry</b>, <b>Vectors</b>, and <b>Indirect</b>.
+
+</p><p>
+<font face="verdana,arial"><b>Supporting Tools:</b></font>
+ The disassembler is a complete package, but a couple
+of tools round out its use. These include:
+</p><ul>
+<li><a href="http://www.techedge.com.au/utils/dhc11tut.htm">Tutorial for the DCH11 disassembler.</a>
+</li><li><a href="http://www.techedge.com.au/utils/ashc11.htm">Motorola 68HC11 Macro Assembler - ASHC11.</a>
+</li><li><a href="http://www.techedge.com.au/utils/bincvt.htm">Formatted Hex to/from Binary converter - BINCVT.</a>
+</li></ul>
+The next sections describe the disassembler.
+
+<font face="verdana,arial"><h2>Configuration File</h2></font>
+
+Information about the code is stored in a
+configuration file, and controls how the disassembler operates. Labels,
+address tables, and data names can all be stored here, and re-used in
+subsequent disassemblies. Each file line is made up of a command with
+optional parameters. The following lists all supported commands, and each
+is further described below. Case (upper or lower) is not significant
+except in label names if they are supplied. Optional parameters are
+shown in square brackets [&lt;optional&gt;].
+<pre><font color="red"> Command &amp; Arguments     Action</font>
+ INput &lt;file&gt;            <font color="gray">Specify source file to disassemble.</font>
+ OUTput &lt;file&gt;           <font color="gray">Specify where disassembly is written.</font>
+ LOad &lt;addr&gt;             <font color="gray">Source file will be loaded to address &lt;addr&gt;.</font>
+ Entry &lt;addr&gt; [&lt;name&gt;]   <font color="gray">Provide a code entry point &lt;addr&gt; with optional label &lt;name&gt;.</font>
+ Label &lt;addr&gt; &lt;name&gt;     <font color="gray">Assign a label &lt;name&gt; to address &lt;addr&gt;.</font>
+ INDEXed &lt;start&gt; &lt;end&gt;   <font color="gray">Define address range where indexed address are entered.</font>
+ Addresses               <font color="gray">Show addresses in disassembly.</font>
+ OPcodes                 <font color="gray">Show opcodes in disassembly.</font>
+ ASCii                   <font color="gray">Show byte data as ASCII strings.</font>
+ Bytes &lt;addr&gt; &lt;count&gt; [&lt;name&gt;] <font color="gray"> Define a byte table at &lt;addr&gt; of &lt;count&gt; length.</font>
+ Words &lt;addr&gt; &lt;count&gt; [&lt;name&gt;] <font color="gray"> Define a word table at &lt;addr&gt; of &lt;count&gt; length.</font>
+ Indirect &lt;addr&gt; [&lt;name&gt;[ &lt;here&gt;]] <font color="gray">        Define a pointer to to an (indirect) address.</font>
+ Vectors &lt;addr&gt; &lt;count&gt; [&lt;name&gt;[ &lt;here&gt;]] <font color="gray"> Define a range of indirect addresses.</font>
+
+</pre>
+<p>
+
+<b>Command Line Switches:</b> A number of options are handled by supplying
+command line switch options. Command line switches override any matching options
+that are also specified in the configuration file. Only an abbreviated
+form of the command line switch is required, eg, <b>-a</b> is enough to specify
+that the output should contain addresses. The minimum number of
+characters required for each switch is indicated by the upper case characters
+in the following description (eg for <b>OVerwrite</b>, just <b>OVA</b>, or
+<b>OVA</b>, is required):
+</p><pre>  <font color="red">Switch        Effect</font>
+  -INput=       <font color="darkblue">Name of binary file to read.</font>
+  -OUTput=      <font color="darkblue">Name of disassembly file produced.</font>
+  -OVerwrite    <font color="darkblue">Forces output file to be overwritten if it already exists.</font>
+  -LOad=        <font color="darkblue">Specify hex start address to load binary file into memory.</font>
+  -Addresses    <font color="darkblue">Show addresses on left of each disassembled line.</font>
+  -OPcodes      <font color="darkblue">Show opcodes for instructions disassembled.</font>
+  -ASCii        <font color="darkblue">Show data byte ASCII equivalents.</font>
+  -@            <font color="darkblue">Use procedure local labels, ie. "@ labels".</font>
+  -LColons      <font color="darkblue">Use a colon (:) suffix on labels (default=TRUE).</font>
+  -LPrefix=     <font color="darkblue">Prefix string for labels (default=<b>L</b>).</font>
+  -HPrefix=     <font color="darkblue">Prefix string for hex constants (default=$).</font>
+  -Bitimmediate <font color="darkblue">Display immediate bytes as a bit# [+bit# ..] mask.</font>
+  -Defsperline= <font color="darkblue">Maximum number of <b>db</b>, or <b>dw</b> items per line (default 10).</font>
+  -FILLminimum= <font color="darkblue">db count of same value to force the <b>fill</b> pseudo-op (default 10).</font>
+  -FRagment     <font color="darkblue">Decode a code Fragment, don't relocate it to high memory.</font>
+  -Verbose      <font color="darkblue">Show control file information as it's decoded.</font>
+  -#            <font color="darkblue">Calculate data addresses from probable IX/IY immediates.</font>
+</pre>
+
+A switch option can be negated with a "-" suffix, or asserted
+with a "+" suffix (the default), as in:
+<font color="darkblue">-op-</font> to turn the option off.
+Switches requiring a parameter must use either an equals "=" or colon
+":" separator, as in:
+<font color="darkblue">LOAD=$c000</font> to define the load address.
+Note also that DHC11 does not really need to use the initial "-"
+when defining a switch.
+
+<font face="verdana,arial"><h2>Option and Switch Details</h2></font>
+
+The following describes all commands (as they appear in the control file)
+and switches (as they appear on the command line).
+Command that have equivalent switches are shown with a leading "-".
+
+
+<font face="verdana,arial"><h3>File Specification -OUTput=, -INput=, -OVerwrite, -Load=</h3></font>
+
+<font face="verdana,arial" color="darkblue">-OUTput=&lt;filename&gt;</font>
+<br>
+Specifies the output file name the disassembly will be written to.
+The disassembler will first test to see if the file exist, and will
+exit without any action if so. To over come this situation you can
+use the <b>-OVA</b> option (described below) to overwrite the old file.
+
+<p>
+<font face="verdana,arial" color="darkblue">-INput=&lt;filename&gt;</font>
+<br>
+Specifies the input file. It is assumed to be in a BINARY format.
+
+</p><p>
+<font face="verdana,arial" color="darkblue">-OVerwrite</font>
+<br>
+This tells the disassembler to overwrite the old output file (which
+results in the old file's contents being lost).
+
+</p><p>
+<font face="verdana,arial" color="darkblue">-Load=&lt;loadaddress&gt;</font>
+<br>
+Is the address the Binary file image will be loaded into.
+If the binary image is too large, or the load address selected
+causes the data to overflow, then an error message is generated
+and the disassembler aborts. Note that the load address is not required
+as the the disassembler assumes the last word of the binary file
+will be at address $FFFE, as this is the HC11's reset vector.
+
+
+<font face="verdana,arial"></font></p><h3><font face="verdana,arial">Disassembly display: -Addresses, -OPcodes</font></h3>
+
+<font face="verdana,arial" color="darkblue">-Addresses</font>
+<br>
+Displays the instruction/code address at each disassembly line, as in:
+
+<table width="550"><tbody><tr bgcolor="wheat"><td><pre>
+  D063            beq     LD071
+  D065    LD065:  ldaA    LC008
+  D068            cmpA    #$AA
+</pre></td></tr></tbody></table>
+
+<font face="verdana,arial" color="darkblue">-OPcodes</font>
+<br>
+Displays the opcode bytes for each
+instruction (note: this does not display data bytes, that are already decoded):
+
+<table width="550"><tbody><tr bgcolor="wheat"><td><pre>
+  5F                      clrB
+  08                      incX
+  18 BC C0 06             cmpY    LC006
+</pre></td></tr></tbody></table>
+
+Combining the two options <font face="verdana,arial" color="darkblue">-A -OP</font> produces:
+
+<table width="550"><tbody><tr bgcolor="wheat"><td><pre>
+  F091    12 2D 40 11     LF091:  brset   L002D, #%01000000, LF0A6
+  F095    CE F3 17                ldX     #$F317
+  F098    18 1F 00 10 0B          brclr   0, Y, #%00010000, LF0AC
+</pre></td></tr></tbody></table>
+
+<font face="verdana,arial"><h3>Label Options: -@ (local labels), -LColons, -LPrefix</h3></font>
+
+<font face="verdana,arial" color="darkblue">-@ (local labels)</font>
+<br>
+Specifies that procedure local labels are to be used instead
+of the default label (described below). Below is an example of code disassembled with the <b>-@</b>
+switch. Note that the instruction at label @21 branches to a default style label (LE277).
+Local labels are bounded by data or entry points that are the target of call instructions.
+
+<table width="550"><tbody><tr bgcolor="wheat"><td><pre>
+  @19     brset   L0039, #%0000010, @21    ; @19 and @20 are local labels
+          bset    L0039, #%0000010
+  @20     ldaA    LC682                    ; LC682 is an entry point
+          staA    L00C5                    ; L00C5 is a data lable
+  @21     brset   L0001, #%0000010, LE277  ; local labels &amp; an entry point
+</pre></td></tr></tbody></table>
+
+<p>
+<font face="verdana,arial" color="darkblue">-LColons</font>
+<br>
+Specifies that a colon (:) suffix is to be used on labels.
+Note that local labels are always shown without a colon. By default colons are used.
+
+</p><p>
+
+<font face="verdana,arial" color="darkblue">-LPrefix=&lt;labelPrefix&gt;</font>
+<br>
+Specifies the prefix string used
+for non-local labels automatically generated by the disassembler. The default prefix is "L" so
+the labels for address <b>$1A2B</b> would be shown as <b>L1A2B</b>. A prefix string of more than
+two characters may cause undesirable indenting of the disassembly.
+
+
+<font face="verdana,arial"></font></p><h3><font face="verdana,arial">Constant Options : -HPrefix, -Bitimmediate</font></h3>
+
+<font face="verdana,arial" color="darkblue">-HPrefix=&lt;hexPrefixString&gt;</font>
+<br>
+Specifies the prefix string for hex constants.
+The default is <b>$</b> and another possible prefix is <b>0x</b>. The prefix you use may depend
+on what your assembler will accept. Here's an example using HPrefix=0x, LPrefix=x and LColons-.
+
+<table width="550"><tbody><tr bgcolor="wheat"><td><pre>
+          adcA    #0x00                   ; 0x is the hex prefix
+          call    xEDDB                   ; x is the label prefix
+  xC134   ldX     #0xC69B                 ; xC134 is label for this instruction
+          staA    x00C1                   ; x00C1 is a data byte label
+</pre></td></tr></tbody></table>
+<p>
+
+<font face="verdana,arial" color="darkblue">-Bitimmediate</font>
+<br>
+Display immediate bytes as either a bit mask or an inverted bit mask.
+Normally the immediate byte field used for instructions such as <b>ldaA</b> is
+shown as a binary value <b>%00100010</b>. When this option is enabled, this
+value would be shown as <b>(bit5+bit1)</b>. If more than 4 bits in a
+mask are set then the inverted form of the mask is used as shown:
+
+<table width="550"><tbody><tr bgcolor="wheat"><td><pre>
+          bitB    #bit0                  ; same as  "bitB   #$01"
+          xorB    #(bit5+bit4)           ; same as  "xorB   #%00110000"
+          andA    #~bit3                 ; same as  "andA   #%11110111"
+          brclr   L00C3, #$FF, @22       ; $FF still is used if all bits set
+  LEEBF:  andB    #~(bit5+bit0)          ; same as  "andB   #%11011110"
+</pre></td></tr></tbody></table>
+
+
+<font face="verdana,arial"></font></p><h3><font face="verdana,arial">Disassembly Control - Label, Entry, Indirect, Vectors</font></h3>
+
+The following commands, all within the control file,
+tell the disassembler information about the binary image it will process.
+The more information that can be determined and supplied here,
+the better the resulting disassembly will be.
+Optional parameters are enclosed in square [ ] brackets.
+
+<p>
+<font face="verdana,arial" color="darkblue">Label &lt;addr&gt; &lt;label&gt;</font>
+<br>
+This simply assigns a label to an address. No assumptions is made
+that this address corresponds to data or code. Note that all commands
+can use optional labels, so this command is generally not required.
+
+</p><p>
+<font face="verdana,arial" color="darkblue">Entry &lt;addr&gt; [&lt;entrylabel&gt;]</font>
+<br>
+Tells the disassembler the location of starting points for code.
+Optionally, a label will be assigned to this entry point.
+The code seeking algorithm scans memory for these locations, and
+automatically adds new entry points as branch and call instructions
+are encountered. When no new entry points are added in a single pass,
+then the disassembler has completed the code seek phase.
+
+</p><p>
+<font face="verdana,arial" color="darkblue">Indirect &lt;addr&gt; [&lt;indirectlabel&gt; [&lt;herelabel&gt;]]</font>
+<br>
+An indirect address is a 16 bit quantity (ie. word, or two bytes) that is
+used by the processor to form a target (jump or call) address.
+This is illustrated by the disassembler's output:
+
+<table width="550"><tbody><tr bgcolor="wheat"><td><pre>
+  &lt;indirectlabel&gt;:  ldS     #$01FF
+                     .
+                     .
+  &lt;addrlabel&gt;:      dw      &lt;indirectlabel&gt;
+</pre></td></tr></tbody></table>
+The word at memory address &lt;addrlabel&gt; points to an address
+that is tagged as an entry point, and the optional
+&lt;indirectlabel&gt; is the label for this address.
+And finally, &lt;addrlabel&gt; will be tagged as a data word. The ordering
+of labels was chosen to maintain compatibility with existing disassemblers.
+
+</p><p>
+<font face="verdana,arial" color="darkblue">Vectors &lt;addr&gt; &lt;count&gt; [&lt;labelbase&gt;[ &lt;herelabel&gt;]]</font>
+<br>
+The Vectors command describes a list of indirect data words, as would be produced
+by a jump table, or list of procedure addresses. The number of data words (or vectors)
+is defined by &lt;count&gt;.
+The optional &lt;labelbase&gt;, if supplied, is used to create a label, for each indirect address,
+of the form <font face="verdana,arial" color="darkblue">&lt;labelbase&gt;_NN</font>, where NN starts from 00.
+The optional &lt;herelabel&gt; is the address (ie. &lt;addr&gt;) of the word table.
+Note that NN is one less than <b>&lt;count&gt;</b>.
+
+<table width="550"><tbody><tr bgcolor="wheat"><td><pre>
+  &lt;labelbase&gt;_00:  ldS     #$01FF
+                    .
+  &lt;labelbase&gt;_01:  ldX     #$1234
+                    .
+                    .
+  &lt;labelbase&gt;_NN:  xorB    #%00110000
+                    .
+
+  &lt;herelabel&gt;:     dw      &lt;labelbase&gt;_00
+                   dw      &lt;labelbase&gt;_01
+                    .
+                   dw      &lt;labelbase&gt;_NN
+</pre></td></tr></tbody></table>
+
+<font face="verdana,arial"></font></p><h3><font face="verdana,arial">Advanced Disassembly Commands - INDEXed, -# (calculate index addresses)</font></h3>
+
+<font face="verdana,arial" color="darkblue">INDEXed &lt;startaddr&gt; &lt;endaddr&gt;</font>
+<br>
+The INDEXed command specifies a range of addresses for which the disassembler will
+attempt to use the last know value of the IX and IY registers in indexed address
+calculations.
+
+<p>
+<font face="verdana,arial" color="darkblue"><b>-#</b> (calculate index addresses)</font>
+<br>
+Indexed data access calculations will only be made when the <b>-#</b> command line switch
+is supplied. The purpose of this switch, and the INDEXed command, is to ensure that
+all data accesses are recorded as well as can be done.
+
+<br>
+
+<font face="verdana,arial"></font></p><h2><font face="verdana,arial">Different Mnemonics</font></h2>
+
+The following mnemonics are different to those as specified by Motorola.
+
+<pre>  <font color="red">DHC11's Mnemonics           Motorola's     Function Performed</font>
+  call                           JSR         Call
+  callr                          BSR         Call Relative (short call)
+  cmpD, cmpX cmpY                CP?         Compare (16 bit register)
+  decX, decY, decS               DE?         Decrement (16 bit register)
+  di                             SEI         Disable Interrupts
+  ei                             CLI         Enable Interrupts
+  incX, incY, incS               IN?         Increment (16 bit register)
+  jr                             BRA         Jump Relative (short jump)
+  push, pushB, pushX, pushY      PSH?        Push on to stack
+  popA, popB, popX, popY         PUL?        Pop off stack
+  ret                            RTS         Return (from subroutine)
+  reti                           RTI         Return From Interrupt
+  xorA, xorB                     EOR?        eXclusive Or
+</pre>
+
+As you can see, DHC11's mnemonics use, at most, one extra character, but this makes
+their meaning much clearer, and is closer to a majority of other assembler syntaxes.
+In addition, the mnemonics are displayed in a mixed case that is designed
+to highlight the registers use by the instruction. For example, LDA, the
+Load A instruction is displayed as <font face="verdana,arial" color="darkblue"><b>ldA</b></font> to
+emphasise that the <b>A</b> register is used in this <b>ld</b> instruction.
+The <font face="verdana,arial" color="darkblue"><b>tAB</b></font> and
+<font face="verdana,arial" color="darkblue"><b>xgDY</b></font> are examples of instructions that use
+two registers in the one mnemonic.
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<center>
+<font color="gray"><i>Last Updated 29th November 2001 (links)</i></font>
+<p>
+Statistics by &nbsp; <a href="http://www.digits.com/"><img src="http://counter.digits.com/wc/-d/4/DHC11" align="middle" width="60" height="20" border="0" hspace="4" vspace="2"> </a><a href="http://www.digits.com/">www.digits.com</a>
+<br>
+Shows approximate hits since 15 May 2000.
+</p><hr>
+<font color="RED">This document is copyright © 2000, 2001, Tech Edge  Pty. Ltd.<br>Author <b>P. Gargano</b><font>
+<p>
+		<a href="http://www.techedge.com.au/">Home</a> |
+		<a href="mailto:peter@mail.techedge.com.au?subject=DHC11%20Feedback">e-mail DHC11 Feedback</a> |
+		<a href="http://www.techedge.com.au/copyrite.htm">Copyright</a>
+
+</p><center>
+
+
+</center></font></font></center></body></html>
